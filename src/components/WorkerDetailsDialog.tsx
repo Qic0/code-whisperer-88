@@ -45,7 +45,7 @@ interface Worker {
   salary?: number;
   avatar_url?: string;
   created_at: string;
-  last_online?: string;
+  last_seen?: string;
   current_task?: string;
   completed_tasks?: Array<{
     task_id: number;
@@ -379,8 +379,8 @@ export const WorkerDetailsDialog = ({ worker, open, onOpenChange }: WorkerDetail
                 <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">Последний онлайн:</span>
                 <span>
-                  {worker.last_online ? 
-                    format(new Date(worker.last_online), 'dd MMMM yyyy, HH:mm', { locale: ru }) : 
+                  {worker.last_seen ? 
+                    format(new Date(worker.last_seen), 'dd MMMM yyyy, HH:mm', { locale: ru }) : 
                     'Никогда не был онлайн'
                   }
                 </span>
