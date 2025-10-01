@@ -17,6 +17,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { format, parseISO, isSameDay } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { ru } from "date-fns/locale";
 import { 
   Mail, 
@@ -380,7 +381,7 @@ export const WorkerDetailsDialog = ({ worker, open, onOpenChange }: WorkerDetail
                 <span className="font-medium">Последний онлайн:</span>
                 <span>
                   {worker.last_seen ? 
-                    format(new Date(worker.last_seen), 'dd MMMM yyyy, HH:mm', { locale: ru }) : 
+                    formatInTimeZone(new Date(worker.last_seen), 'Europe/Moscow', 'dd MMMM yyyy, HH:mm', { locale: ru }) : 
                     'Никогда не был онлайн'
                   }
                 </span>
