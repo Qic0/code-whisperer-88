@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { fromZonedTime } from "date-fns-tz/fromZonedTime";
 
 import { DataTable } from "@/components/DataTable";
 import { WorkerDetailsDialog } from "@/components/WorkerDetailsDialog";
@@ -11,6 +12,19 @@ import { Plus, RefreshCw, UserPlus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+
+// Normalize last_seen strings that are in Moscow local time (no timezone)
+const toEpochMs = (value?: string) => {
+  if (!value) return 0;
+  try {
+    if (/[zZ]|[+-]\d{2}:\d{2}$/.test(value)) {
+      return new Date(value).getTime();
+    }
+    return fromZonedTime(value, 'Europe/Moscow').getTime();
+  } catch {
+    return new Date(value).getTime();
+  }
+};
 
 const Workers = () => {
   const [selectedWorker, setSelectedWorker] = useState<any>(null);
@@ -116,8 +130,8 @@ const Workers = () => {
           {/* Онлайн индикатор */}
           <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
             (() => {
-              const lastSeen = row.last_seen ? new Date(row.last_seen).getTime() : 0;
-              const now = new Date().getTime();
+              const lastSeen = toEpochMs(row.last_seen);
+              const now = Date.now();
               const diffInMinutes = (now - lastSeen) / (1000 * 60);
               return diffInMinutes > 1 ? 'bg-gray-400' : (isUserOnline(row.uuid_user) ? 'bg-green-500' : 'bg-gray-400');
             })()
@@ -133,8 +147,8 @@ const Workers = () => {
       header: 'Статус',
       render: (value: string, row: any) => {
         // Проверяем, была ли активность более минуты назад
-        const lastSeen = row.last_seen ? new Date(row.last_seen).getTime() : 0;
-        const now = new Date().getTime();
+        const lastSeen = toEpochMs(row.last_seen);
+        const now = Date.now();
         const diffInMinutes = (now - lastSeen) / (1000 * 60);
         
         // Если прошло более минуты с последней активности - офлайн
@@ -252,7 +266,8 @@ const Workers = () => {
       header: 'Последняя активность',
       render: (value: string) => {
         if (!value) return null;
-        const date = new Date(value);
+        const ts = toEpochMs(value);
+        const date = new Date(ts);
         
         // Check if the date is valid
         if (isNaN(date.getTime())) return null;

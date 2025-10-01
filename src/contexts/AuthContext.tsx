@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
+import { fromZonedTime } from 'date-fns-tz/fromZonedTime';
 
 interface UserPresence {
   user_id: string;
@@ -49,6 +50,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [onlineUsers, setOnlineUsers] = useState<UserPresence[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
+
+  // Normalize last_seen strings that are in Moscow local time (no timezone)
+  const toEpochMs = (value?: string) => {
+    if (!value) return 0;
+    try {
+      // If value already contains timezone info (Z or +/-HH:MM), use native Date
+      if (/[zZ]|[+-]\d{2}:\d{2}$/.test(value)) {
+        return new Date(value).getTime();
+      }
+      // Treat as Europe/Moscow local time
+      return fromZonedTime(value, 'Europe/Moscow').getTime();
+    } catch {
+      return new Date(value).getTime();
+    }
+  };
 
   const fetchUserProfile = async (userId: string) => {
     try {
@@ -204,9 +220,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .select('uuid_user, last_seen, status');
             
             if (allUsers) {
-              const now = new Date().getTime();
+              const now = Date.now();
               for (const user of allUsers) {
-                const lastSeen = user.last_seen ? new Date(user.last_seen).getTime() : 0;
+                const lastSeen = toEpochMs(user.last_seen || undefined);
                 const diffInMinutes = (now - lastSeen) / (1000 * 60);
                 
                 // Если прошло больше минуты и статус онлайн - обновляем на офлайн
@@ -318,8 +334,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return false;
     
     // Проверяем, была ли активность более минуты назад
-    const lastSeen = new Date(user.online_at).getTime();
-    const now = new Date().getTime();
+    const lastSeen = toEpochMs(user.online_at);
+    const now = Date.now();
     const diffInMinutes = (now - lastSeen) / (1000 * 60);
     
     return diffInMinutes <= 1 && user.status === 'online';
@@ -330,8 +346,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!onlineUser) return 'offline';
     
     // Проверяем, была ли активность более минуты назад
-    const lastSeen = new Date(onlineUser.online_at).getTime();
-    const now = new Date().getTime();
+    const lastSeen = toEpochMs(onlineUser.online_at);
+    const now = Date.now();
     const diffInMinutes = (now - lastSeen) / (1000 * 60);
     
     return diffInMinutes > 1 ? 'offline' : (onlineUser.status || 'offline');
